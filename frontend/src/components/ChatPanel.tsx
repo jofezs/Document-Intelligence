@@ -47,7 +47,7 @@ export default function ChatPanel({ documents, selectedIds }: Props) {
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-400 dark:text-slate-500">
             {readyDocs.length === 0
               ? "Upload a PDF to get started."
               : "Ask a question about your documents — text, tables, charts and layout are all fair game."}
@@ -57,7 +57,9 @@ export default function ChatPanel({ documents, selectedIds }: Props) {
           <div key={i} className={msg.role === "user" ? "text-right" : "text-left"}>
             <div
               className={`inline-block max-w-[85%] rounded-lg px-3 py-2 text-left text-sm ${
-                msg.role === "user" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-800"
+                msg.role === "user"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100"
               }`}
             >
               <ReactMarkdown>{msg.content}</ReactMarkdown>
@@ -72,17 +74,17 @@ export default function ChatPanel({ documents, selectedIds }: Props) {
           </div>
         ))}
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-slate-400">
+          <div className="flex items-center gap-2 text-sm text-slate-400 dark:text-slate-500">
             <Loader2 className="h-4 w-4 animate-spin" /> Thinking…
           </div>
         )}
       </div>
-      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-slate-200 p-3">
+      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-slate-200 p-3 dark:border-slate-700">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about your documents…"
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-indigo-500"
         />
         <button
           type="submit"

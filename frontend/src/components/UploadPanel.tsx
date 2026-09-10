@@ -48,11 +48,13 @@ export default function UploadPanel({ onUploaded }: Props) {
         }}
         onClick={() => inputRef.current?.click()}
         className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-          dragOver ? "border-indigo-400 bg-indigo-50" : "border-slate-300 hover:border-indigo-300"
+          dragOver
+            ? "border-indigo-400 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-950"
+            : "border-slate-300 hover:border-indigo-300 dark:border-slate-600 dark:hover:border-indigo-500"
         }`}
       >
-        <UploadCloud className="h-6 w-6 text-slate-400" />
-        <p className="text-sm text-slate-600">
+        <UploadCloud className="h-6 w-6 text-slate-400 dark:text-slate-500" />
+        <p className="text-sm text-slate-600 dark:text-slate-300">
           {uploading ? "Uploading…" : "Drop a PDF here or click to browse"}
         </p>
         <input
@@ -63,7 +65,7 @@ export default function UploadPanel({ onUploaded }: Props) {
           onChange={(e) => handleFiles(e.target.files)}
         />
       </div>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

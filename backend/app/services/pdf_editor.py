@@ -1,10 +1,13 @@
 import shutil
+import time
 from pathlib import Path
 from typing import Callable
 
 import pymupdf
 
 from app.config import settings
+
+_HISTORY_CAP = 15
 
 
 class EditError(Exception):
@@ -30,10 +33,47 @@ def active_path(doc_id: str) -> Path:
     return working if working.exists() else source_path(doc_id)
 
 
+def _history_dir(doc_id: str) -> Path:
+    d = _doc_dir(doc_id) / "history"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _history_entries(doc_id: str) -> list[Path]:
+    d = _doc_dir(doc_id) / "history"
+    if not d.exists():
+        return []
+    return sorted(d.glob("*.pdf"), key=lambda p: int(p.stem))
+
+
+def _push_history(doc_id: str, pre_mutation_path: Path) -> None:
+    entries = _history_entries(doc_id)
+    if len(entries) >= _HISTORY_CAP:
+        entries[0].unlink()
+    dest = _history_dir(doc_id) / f"{int(time.time() * 1000)}.pdf"
+    shutil.copyfile(pre_mutation_path, dest)
+
+
+def history_count(doc_id: str) -> int:
+    return len(_history_entries(doc_id))
+
+
+def undo(doc_id: str) -> None:
+    entries = _history_entries(doc_id)
+    if not entries:
+        raise EditError("Nothing to undo")
+    last = entries[-1]
+    shutil.copyfile(last, working_path(doc_id))
+    last.unlink()
+
+
 def reset_document(doc_id: str) -> None:
     working = working_path(doc_id)
     if working.exists():
         working.unlink()
+    history_dir = _doc_dir(doc_id) / "history"
+    if history_dir.exists():
+        shutil.rmtree(history_dir)
 
 
 def _ensure_working_copy(doc_id: str) -> Path:
@@ -45,7 +85,8 @@ def _ensure_working_copy(doc_id: str) -> Path:
 
 def _mutate(doc_id: str, mutator: Callable[[pymupdf.Document], None]) -> None:
     """Open the working copy, apply `mutator(doc)`, and atomically save the
-    result back. If `mutator` raises, the working copy is left untouched."""
+    result back. If `mutator` raises, the working copy is left untouched and
+    no history entry is recorded."""
     path = _ensure_working_copy(doc_id)
     doc = pymupdf.open(path)
     try:
@@ -54,6 +95,9 @@ def _mutate(doc_id: str, mutator: Callable[[pymupdf.Document], None]) -> None:
         doc.save(tmp_path, garbage=4, deflate=True)
     finally:
         doc.close()
+    # Snapshot the pre-mutation content for undo now that we know the edit
+    # succeeded, while `path` still holds it (we haven't replaced it yet).
+    _push_history(doc_id, path)
     tmp_path.replace(path)
 
 

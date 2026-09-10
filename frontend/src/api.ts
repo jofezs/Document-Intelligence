@@ -106,6 +106,14 @@ export function resetDocument(docId: string) {
   return postJson<{ status: string }>(`/api/documents/${docId}/reset`, {});
 }
 
+export function getHistoryCount(docId: string) {
+  return request<{ count: number }>(`/api/documents/${docId}/history`);
+}
+
+export function undoEdit(docId: string) {
+  return postJson<{ count: number; num_pages: number }>(`/api/documents/${docId}/undo`, {});
+}
+
 export function downloadUrl(docId: string) {
   return `${API_BASE}/api/documents/${docId}/download`;
 }

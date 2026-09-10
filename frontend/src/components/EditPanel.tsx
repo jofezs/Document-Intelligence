@@ -7,6 +7,7 @@ import {
   StickyNote,
   Trash2,
   Type,
+  Undo2,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -18,6 +19,7 @@ import {
   downloadUrl,
   fillFormFields,
   getFormFields,
+  getHistoryCount,
   highlightText,
   imageUrl,
   redactText,
@@ -25,6 +27,7 @@ import {
   resetDocument,
   rotatePage,
   stampText,
+  undoEdit,
 } from "../api";
 import type { DocumentItem, FormField } from "../types";
 
@@ -56,10 +59,22 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
 
+  const [undoCount, setUndoCount] = useState(0);
+
   useEffect(() => {
     refreshFormFields();
+    refreshUndoCount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function refreshUndoCount() {
+    try {
+      const { count } = await getHistoryCount(doc.id);
+      setUndoCount(count);
+    } catch {
+      // non-critical; leave the undo button in its previous state
+    }
+  }
 
   async function refreshFormFields() {
     try {
@@ -78,12 +93,21 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
       await action();
       setVersion((v) => v + 1);
       onChanged();
+      await refreshUndoCount();
       if (opts?.refetchForm) await refreshFormFields();
     } catch (err) {
       setError(err instanceof Error ? err.message : `${label} failed`);
     } finally {
       setBusy(null);
     }
+  }
+
+  async function handleUndo() {
+    await runAction("Undoing", async () => {
+      const res = await undoEdit(doc.id);
+      setNumPages(res.num_pages);
+      await refreshFormFields();
+    });
   }
 
   async function handleDeletePage(pageNumber: number) {
@@ -160,58 +184,71 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="flex h-full max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white">
-        <div className="flex items-center justify-between border-b border-slate-200 p-4">
+      <div className="flex h-full max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-700">
           <div>
-            <h2 className="font-semibold text-slate-800">Edit: {doc.filename}</h2>
-            <p className="text-xs text-slate-400">{numPages} pages</p>
+            <h2 className="font-semibold text-slate-800 dark:text-slate-100">Edit: {doc.filename}</h2>
+            <p className="text-xs text-slate-400 dark:text-slate-500">{numPages} pages</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {busy && (
-              <span className="flex items-center gap-1 text-xs text-slate-400">
+              <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
                 <Loader2 className="h-3 w-3 animate-spin" /> {busy}…
               </span>
             )}
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
+            <button
+              onClick={handleUndo}
+              disabled={undoCount === 0 || !!busy}
+              title={undoCount === 0 ? "Nothing to undo" : `Undo last edit (${undoCount} available)`}
+              className="flex items-center gap-1 rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-400"
+            >
+              <Undo2 className="h-3.5 w-3.5" /> Undo
+            </button>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-100">
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {error && <p className="bg-red-50 px-4 py-2 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="bg-red-50 px-4 py-2 text-sm text-red-600 dark:bg-red-950 dark:text-red-400">{error}</p>
+        )}
 
         <div className="flex-1 overflow-y-auto p-4">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {pages.map((pageNumber) => (
-              <div key={pageNumber} className="flex flex-col gap-1 rounded-md border border-slate-200 p-2">
+              <div
+                key={pageNumber}
+                className="flex flex-col gap-1 rounded-md border border-slate-200 p-2 dark:border-slate-700"
+              >
                 <img
                   src={`${imageUrl(`/api/documents/${doc.id}/pages/${pageNumber}/image`)}?v=${version}`}
                   alt={`Page ${pageNumber}`}
                   onClick={(e) => handlePageClick(e, pageNumber)}
-                  className="cursor-crosshair rounded border border-slate-100"
+                  className="cursor-crosshair rounded border border-slate-100 dark:border-slate-700"
                   title="Click to add a note here"
                 />
-                <p className="text-center text-xs text-slate-400">Page {pageNumber}</p>
+                <p className="text-center text-xs text-slate-400 dark:text-slate-500">Page {pageNumber}</p>
                 <div className="flex items-center justify-center gap-1">
                   <button
                     title="Move left"
                     onClick={() => handleMove(pageNumber, -1)}
                     disabled={pageNumber === 1}
-                    className="rounded p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30"
+                    className="rounded p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30 dark:text-slate-500 dark:hover:text-indigo-400"
                   >
                     ←
                   </button>
                   <button
                     title="Rotate 90°"
                     onClick={() => handleRotate(pageNumber, 90)}
-                    className="rounded p-1 text-slate-400 hover:text-indigo-600"
+                    className="rounded p-1 text-slate-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400"
                   >
                     <RotateCw className="h-4 w-4" />
                   </button>
                   <button
                     title="Delete page"
                     onClick={() => handleDeletePage(pageNumber)}
-                    className="rounded p-1 text-slate-400 hover:text-red-500"
+                    className="rounded p-1 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -219,7 +256,7 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
                     title="Move right"
                     onClick={() => handleMove(pageNumber, 1)}
                     disabled={pageNumber === numPages}
-                    className="rounded p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30"
+                    className="rounded p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30 dark:text-slate-500 dark:hover:text-indigo-400"
                   >
                     →
                   </button>
@@ -229,15 +266,15 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-md border border-slate-200 p-3">
-              <p className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-700">
+            <div className="rounded-md border border-slate-200 p-3 dark:border-slate-700">
+              <p className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
                 <Highlighter className="h-4 w-4" /> Highlight text
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={highlightPage}
                   onChange={(e) => setHighlightPage(Number(e.target.value))}
-                  className="rounded border border-slate-300 px-2 py-1 text-sm"
+                  className="rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 >
                   {pages.map((p) => (
                     <option key={p} value={p}>
@@ -249,7 +286,7 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
                   value={highlightQuery}
                   onChange={(e) => setHighlightQuery(e.target.value)}
                   placeholder="Text to find and highlight"
-                  className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
+                  className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
                 />
                 <button
                   onClick={handleHighlight}
@@ -261,15 +298,15 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
               </div>
             </div>
 
-            <div className="rounded-md border border-slate-200 p-3">
-              <p className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-700">
+            <div className="rounded-md border border-slate-200 p-3 dark:border-slate-700">
+              <p className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
                 <Scissors className="h-4 w-4" /> Redact text (permanent)
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={redactScope}
                   onChange={(e) => setRedactScope(e.target.value as "all" | "page")}
-                  className="rounded border border-slate-300 px-2 py-1 text-sm"
+                  className="rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 >
                   <option value="all">All pages</option>
                   <option value="page">One page</option>
@@ -278,7 +315,7 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
                   <select
                     value={redactPage}
                     onChange={(e) => setRedactPage(Number(e.target.value))}
-                    className="rounded border border-slate-300 px-2 py-1 text-sm"
+                    className="rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   >
                     {pages.map((p) => (
                       <option key={p} value={p}>
@@ -291,7 +328,7 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
                   value={redactQuery}
                   onChange={(e) => setRedactQuery(e.target.value)}
                   placeholder="Text to redact"
-                  className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
+                  className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
                 />
                 <button
                   onClick={handleRedact}
@@ -304,7 +341,7 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
             <span>Click a page thumbnail above to:</span>
             <label className="flex items-center gap-1">
               <input
@@ -325,17 +362,17 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
           </div>
 
           {formFields.length > 0 && (
-            <div className="mt-6 rounded-md border border-slate-200 p-3">
-              <p className="mb-2 text-sm font-medium text-slate-700">Form fields</p>
+            <div className="mt-6 rounded-md border border-slate-200 p-3 dark:border-slate-700">
+              <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">Form fields</p>
               <div className="flex flex-col gap-2">
                 {formFields.map((field) => (
                   <label key={field.name} className="flex items-center gap-2 text-sm">
-                    <span className="w-40 shrink-0 truncate text-slate-500">{field.name}</span>
+                    <span className="w-40 shrink-0 truncate text-slate-500 dark:text-slate-400">{field.name}</span>
                     {field.choices ? (
                       <select
                         value={formValues[field.name] ?? ""}
                         onChange={(e) => setFormValues((v) => ({ ...v, [field.name]: e.target.value }))}
-                        className="flex-1 rounded border border-slate-300 px-2 py-1"
+                        className="flex-1 rounded border border-slate-300 px-2 py-1 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                       >
                         {field.choices.map((choice) => (
                           <option key={choice} value={choice}>
@@ -347,7 +384,7 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
                       <input
                         value={formValues[field.name] ?? ""}
                         onChange={(e) => setFormValues((v) => ({ ...v, [field.name]: e.target.value }))}
-                        className="flex-1 rounded border border-slate-300 px-2 py-1"
+                        className="flex-1 rounded border border-slate-300 px-2 py-1 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                       />
                     )}
                   </label>
@@ -363,8 +400,11 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-200 p-4">
-          <button onClick={handleReset} className="text-sm text-slate-400 hover:text-red-500">
+        <div className="flex items-center justify-between border-t border-slate-200 p-4 dark:border-slate-700">
+          <button
+            onClick={handleReset}
+            className="text-sm text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400"
+          >
             Reset to original
           </button>
           <a

@@ -159,6 +159,24 @@ async def fill_form_fields(doc_id: str, payload: FormFillRequest):
     return {"updated": updated}
 
 
+@router.get("/history")
+async def get_history(doc_id: str):
+    _require_document(doc_id)
+    return {"count": pdf_editor.history_count(doc_id)}
+
+
+@router.post("/undo")
+async def undo(doc_id: str):
+    _require_document(doc_id)
+    try:
+        pdf_editor.undo(doc_id)
+    except pdf_editor.EditError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    _reindex_full(doc_id)
+    doc = store.get_document(doc_id)
+    return {"count": pdf_editor.history_count(doc_id), "num_pages": doc["num_pages"]}
+
+
 @router.post("/reset")
 async def reset_document(doc_id: str):
     _require_document(doc_id)

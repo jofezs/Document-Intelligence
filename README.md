@@ -97,12 +97,15 @@ present in `docker-compose.yml`; if Ollama still isn't reachable, run it with
 | `POST` | `/api/query` | `{ question, doc_ids?, top_k? }` → answer + citations |
 | `POST` | `/api/documents/{id}/highlight` | `{ page_number, text, color? }` → highlight matching text |
 | `POST` | `/api/documents/{id}/note` | `{ page_number, x, y, text }` → sticky-note annotation |
+| `POST` | `/api/documents/{id}/stamp` | `{ page_number, x, y, text, fontsize? }` → burn visible text onto the page |
 | `POST` | `/api/documents/{id}/redact` | `{ text, page_number? }` → permanently black out matching text |
 | `DELETE` | `/api/documents/{id}/pages/{n}` | Delete a page |
 | `POST` | `/api/documents/{id}/pages/{n}/rotate` | `{ degrees }` → rotate a page (multiple of 90) |
 | `POST` | `/api/documents/{id}/pages/reorder` | `{ order: number[] }` → reorder pages |
 | `GET` | `/api/documents/{id}/form-fields` | List detected AcroForm fields |
 | `POST` | `/api/documents/{id}/form-fields` | `{ values: {name: value} }` → fill form fields |
+| `GET` | `/api/documents/{id}/history` | `{ count }` → number of edits available to undo |
+| `POST` | `/api/documents/{id}/undo` | Revert the most recent edit |
 | `POST` | `/api/documents/{id}/reset` | Discard all edits, revert to the original upload |
 | `GET` | `/api/documents/{id}/download` | Download the current (possibly edited) PDF |
 
@@ -110,13 +113,22 @@ present in `docker-compose.yml`; if Ollama still isn't reachable, run it with
 
 Click the pencil icon next to a ready document to open the editor: rotate,
 reorder, or delete pages; highlight or permanently redact matching text;
-drop sticky notes by clicking a page thumbnail; and fill any detected form
-fields. Edits are applied to a working copy (`backend/data/storage/{id}/working.pdf`)
-— the original upload is never touched, and "Reset to original" discards all
-edits. Edits that change extractable text (redact, delete/reorder pages, fill
-forms) automatically re-index the document so chat answers and citations stay
-in sync; cosmetic edits (highlight, note, rotate) only re-render the affected
-page images.
+click a page thumbnail to type visible text into a blank (for flat/scanned
+forms with no real fields) or drop a sticky note; and fill any detected
+AcroForm fields. Edits are applied to a working copy
+(`backend/data/storage/{id}/working.pdf`) — the original upload is never
+touched. **Undo** reverts the most recent edit (up to the last 15, stored as
+snapshots under `backend/data/storage/{id}/history/`); **Reset to original**
+discards all edits and clears the undo history. Edits that change
+extractable text (redact, delete/reorder pages, fill forms, type text)
+automatically re-index the document so chat answers and citations stay in
+sync; cosmetic edits (highlight, sticky note, rotate) only re-render the
+affected page images.
+
+### Dark mode
+
+Toggle via the sun/moon icon in the sidebar header. The choice is saved to
+`localStorage`; on first visit it follows the OS-level color scheme.
 
 ## Configuration
 
