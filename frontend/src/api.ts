@@ -64,6 +64,15 @@ export function addNote(docId: string, pageNumber: number, x: number, y: number,
   });
 }
 
+export function stampText(docId: string, pageNumber: number, x: number, y: number, text: string) {
+  return postJson<{ status: string }>(`/api/documents/${docId}/stamp`, {
+    page_number: pageNumber,
+    x,
+    y,
+    text,
+  });
+}
+
 export function redactText(docId: string, text: string, pageNumber?: number) {
   return postJson<{ matches: number }>(`/api/documents/${docId}/redact`, {
     text,

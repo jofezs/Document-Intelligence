@@ -40,6 +40,14 @@ class NoteRequest(BaseModel):
     text: str
 
 
+class StampRequest(BaseModel):
+    page_number: int
+    x: float
+    y: float
+    text: str
+    fontsize: float = 11
+
+
 class RedactRequest(BaseModel):
     text: str
     page_number: Optional[int] = None
@@ -76,6 +84,17 @@ async def add_note(doc_id: str, payload: NoteRequest):
     except pdf_editor.EditError as exc:
         raise HTTPException(400, str(exc)) from exc
     _reindex_visual(doc_id)
+    return {"status": "ok"}
+
+
+@router.post("/stamp")
+async def stamp_text(doc_id: str, payload: StampRequest):
+    _require_document(doc_id)
+    try:
+        pdf_editor.stamp_text(doc_id, payload.page_number, payload.x, payload.y, payload.text, payload.fontsize)
+    except pdf_editor.EditError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    _reindex_full(doc_id)
     return {"status": "ok"}
 
 

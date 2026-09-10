@@ -6,6 +6,7 @@ import {
   Scissors,
   StickyNote,
   Trash2,
+  Type,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -23,6 +24,7 @@ import {
   reorderPages,
   resetDocument,
   rotatePage,
+  stampText,
 } from "../api";
 import type { DocumentItem, FormField } from "../types";
 
@@ -48,6 +50,8 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
   const [redactScope, setRedactScope] = useState<"all" | "page">("all");
   const [redactPage, setRedactPage] = useState(1);
   const [redactQuery, setRedactQuery] = useState("");
+
+  const [clickMode, setClickMode] = useState<"type" | "note">("type");
 
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
@@ -128,9 +132,15 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
     const x = (pixelX / RENDER_DPI) * POINTS_PER_INCH;
     const y = (pixelY / RENDER_DPI) * POINTS_PER_INCH;
 
-    const text = window.prompt(`Add a note on page ${pageNumber}:`);
-    if (!text) return;
-    await runAction(`Adding note to page ${pageNumber}`, () => addNote(doc.id, pageNumber, x, y, text));
+    if (clickMode === "type") {
+      const text = window.prompt(`Type text to place on page ${pageNumber}:`);
+      if (!text) return;
+      await runAction(`Typing on page ${pageNumber}`, () => stampText(doc.id, pageNumber, x, y, text));
+    } else {
+      const text = window.prompt(`Add a sticky note on page ${pageNumber}:`);
+      if (!text) return;
+      await runAction(`Adding note to page ${pageNumber}`, () => addNote(doc.id, pageNumber, x, y, text));
+    }
   }
 
   async function handleFormSubmit() {
@@ -294,9 +304,25 @@ export default function EditPanel({ doc, onClose, onChanged }: Props) {
             </div>
           </div>
 
-          <p className="mt-3 flex items-center gap-1 text-xs text-slate-400">
-            <StickyNote className="h-3 w-3" /> Click anywhere on a page thumbnail above to drop a sticky note there.
-          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <span>Click a page thumbnail above to:</span>
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                checked={clickMode === "type"}
+                onChange={() => setClickMode("type")}
+              />
+              <Type className="h-3 w-3" /> type visible text (fill a blank on a flat form)
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                checked={clickMode === "note"}
+                onChange={() => setClickMode("note")}
+              />
+              <StickyNote className="h-3 w-3" /> drop a sticky note (icon, click to reveal)
+            </label>
+          </div>
 
           {formFields.length > 0 && (
             <div className="mt-6 rounded-md border border-slate-200 p-3">

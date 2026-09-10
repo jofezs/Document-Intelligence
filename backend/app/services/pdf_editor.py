@@ -92,6 +92,18 @@ def add_note(doc_id: str, page_number: int, x: float, y: float, text: str) -> No
     _mutate(doc_id, mutator)
 
 
+def stamp_text(doc_id: str, page_number: int, x: float, y: float, text: str, fontsize: float = 11) -> None:
+    """Burn visible text directly onto the page at (x, y) — e.g. filling in a
+    blank on a flat (non-interactive) form. Unlike add_note, this becomes part
+    of the page's extractable text."""
+
+    def mutator(doc: pymupdf.Document) -> None:
+        page = _require_page(doc, page_number)
+        page.insert_text((x, y), text, fontsize=fontsize)
+
+    _mutate(doc_id, mutator)
+
+
 def redact_text(doc_id: str, text: str, page_number: int | None = None) -> int:
     match_count = 0
 
