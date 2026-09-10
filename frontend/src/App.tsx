@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { listDocuments } from "./api";
 import ChatPanel from "./components/ChatPanel";
 import DocumentList from "./components/DocumentList";
+import EditPanel from "./components/EditPanel";
 import UploadPanel from "./components/UploadPanel";
 import type { DocumentItem } from "./types";
 
 export default function App() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
 
   async function refresh() {
     setDocuments(await listDocuments());
@@ -38,6 +40,7 @@ export default function App() {
             documents={documents}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
+            onEdit={setEditingDoc}
             onChanged={refresh}
           />
         </div>
@@ -50,6 +53,9 @@ export default function App() {
       <main className="flex-1">
         <ChatPanel documents={documents} selectedIds={selectedIds} />
       </main>
+      {editingDoc && (
+        <EditPanel doc={editingDoc} onClose={() => setEditingDoc(null)} onChanged={refresh} />
+      )}
     </div>
   );
 }

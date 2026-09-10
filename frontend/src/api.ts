@@ -1,4 +1,4 @@
-import type { DocumentItem, QueryResponse } from "./types";
+import type { DocumentItem, FormField, QueryResponse } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -38,4 +38,65 @@ export function queryDocuments(question: string, docIds?: string[]) {
 
 export function imageUrl(path: string) {
   return `${API_BASE}${path}`;
+}
+
+function postJson<T>(path: string, body: unknown) {
+  return request<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function highlightText(docId: string, pageNumber: number, text: string) {
+  return postJson<{ matches: number }>(`/api/documents/${docId}/highlight`, {
+    page_number: pageNumber,
+    text,
+  });
+}
+
+export function addNote(docId: string, pageNumber: number, x: number, y: number, text: string) {
+  return postJson<{ status: string }>(`/api/documents/${docId}/note`, {
+    page_number: pageNumber,
+    x,
+    y,
+    text,
+  });
+}
+
+export function redactText(docId: string, text: string, pageNumber?: number) {
+  return postJson<{ matches: number }>(`/api/documents/${docId}/redact`, {
+    text,
+    page_number: pageNumber,
+  });
+}
+
+export function deletePage(docId: string, pageNumber: number) {
+  return request<{ num_pages: number }>(`/api/documents/${docId}/pages/${pageNumber}`, {
+    method: "DELETE",
+  });
+}
+
+export function rotatePage(docId: string, pageNumber: number, degrees: number) {
+  return postJson<{ status: string }>(`/api/documents/${docId}/pages/${pageNumber}/rotate`, { degrees });
+}
+
+export function reorderPages(docId: string, order: number[]) {
+  return postJson<{ status: string }>(`/api/documents/${docId}/pages/reorder`, { order });
+}
+
+export function getFormFields(docId: string) {
+  return request<FormField[]>(`/api/documents/${docId}/form-fields`);
+}
+
+export function fillFormFields(docId: string, values: Record<string, string>) {
+  return postJson<{ updated: number }>(`/api/documents/${docId}/form-fields`, { values });
+}
+
+export function resetDocument(docId: string) {
+  return postJson<{ status: string }>(`/api/documents/${docId}/reset`, {});
+}
+
+export function downloadUrl(docId: string) {
+  return `${API_BASE}/api/documents/${docId}/download`;
 }

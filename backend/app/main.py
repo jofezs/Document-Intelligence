@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import documents, query
+from app.routers import documents, edit, query
 
 app = FastAPI(title="Document Intelligence Agent API")
 
@@ -15,6 +15,7 @@ app.add_middleware(
 )
 
 app.include_router(documents.router)
+app.include_router(edit.router)
 app.include_router(query.router)
 
 

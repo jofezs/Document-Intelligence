@@ -95,6 +95,28 @@ present in `docker-compose.yml`; if Ollama still isn't reachable, run it with
 | `DELETE` | `/api/documents/{id}` | Remove a document and its index entries |
 | `GET` | `/api/documents/{id}/pages/{n}/image` | Rendered PNG of a given page |
 | `POST` | `/api/query` | `{ question, doc_ids?, top_k? }` → answer + citations |
+| `POST` | `/api/documents/{id}/highlight` | `{ page_number, text, color? }` → highlight matching text |
+| `POST` | `/api/documents/{id}/note` | `{ page_number, x, y, text }` → sticky-note annotation |
+| `POST` | `/api/documents/{id}/redact` | `{ text, page_number? }` → permanently black out matching text |
+| `DELETE` | `/api/documents/{id}/pages/{n}` | Delete a page |
+| `POST` | `/api/documents/{id}/pages/{n}/rotate` | `{ degrees }` → rotate a page (multiple of 90) |
+| `POST` | `/api/documents/{id}/pages/reorder` | `{ order: number[] }` → reorder pages |
+| `GET` | `/api/documents/{id}/form-fields` | List detected AcroForm fields |
+| `POST` | `/api/documents/{id}/form-fields` | `{ values: {name: value} }` → fill form fields |
+| `POST` | `/api/documents/{id}/reset` | Discard all edits, revert to the original upload |
+| `GET` | `/api/documents/{id}/download` | Download the current (possibly edited) PDF |
+
+### Modifying documents
+
+Click the pencil icon next to a ready document to open the editor: rotate,
+reorder, or delete pages; highlight or permanently redact matching text;
+drop sticky notes by clicking a page thumbnail; and fill any detected form
+fields. Edits are applied to a working copy (`backend/data/storage/{id}/working.pdf`)
+— the original upload is never touched, and "Reset to original" discards all
+edits. Edits that change extractable text (redact, delete/reorder pages, fill
+forms) automatically re-index the document so chat answers and citations stay
+in sync; cosmetic edits (highlight, note, rotate) only re-render the affected
+page images.
 
 ## Configuration
 

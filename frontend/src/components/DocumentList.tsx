@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, FileText, Loader2, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileText, Loader2, Pencil, Trash2 } from "lucide-react";
 import type { MouseEvent } from "react";
 
 import { deleteDocument } from "../api";
@@ -8,6 +8,7 @@ interface Props {
   documents: DocumentItem[];
   selectedIds: string[];
   onToggleSelect: (id: string) => void;
+  onEdit: (doc: DocumentItem) => void;
   onChanged: () => void;
 }
 
@@ -17,11 +18,16 @@ const statusIcon: Record<DocumentItem["status"], JSX.Element> = {
   error: <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />,
 };
 
-export default function DocumentList({ documents, selectedIds, onToggleSelect, onChanged }: Props) {
+export default function DocumentList({ documents, selectedIds, onToggleSelect, onEdit, onChanged }: Props) {
   async function handleDelete(id: string, e: MouseEvent) {
     e.stopPropagation();
     await deleteDocument(id);
     onChanged();
+  }
+
+  function handleEdit(doc: DocumentItem, e: MouseEvent) {
+    e.stopPropagation();
+    onEdit(doc);
   }
 
   if (documents.length === 0) {
@@ -48,6 +54,11 @@ export default function DocumentList({ documents, selectedIds, onToggleSelect, o
             </p>
           </div>
           {statusIcon[doc.status]}
+          {doc.status === "ready" && (
+            <button onClick={(e) => handleEdit(doc, e)} className="shrink-0 text-slate-300 hover:text-indigo-600">
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
           <button onClick={(e) => handleDelete(doc.id, e)} className="shrink-0 text-slate-300 hover:text-red-500">
             <Trash2 className="h-4 w-4" />
           </button>

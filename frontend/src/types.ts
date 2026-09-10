@@ -25,3 +25,11 @@ export interface ChatMessage {
   content: string;
   citations?: Citation[];
 }
+
+export interface FormField {
+  name: string;
+  type: string;
+  page_number: number;
+  value: string;
+  choices: string[] | null;
+}
